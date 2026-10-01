@@ -8,6 +8,7 @@ on:
     branches:
       - owa-branding
     paths-ignore:
+      - ".github/workflows/**"
       - "server-aio/**"
       - "**/*.md"
   workflow_dispatch:
@@ -17,7 +18,7 @@ permissions:
 
 concurrency:
   group: owa-cloud-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   release:
