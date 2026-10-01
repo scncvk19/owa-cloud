@@ -245,6 +245,12 @@ android {
     }
 
     sourceSets {
+        // OWA Cloud intentionally follows the generic/F-Droid-compatible
+        // implementation for flavor-specific Java classes.
+        getByName("owa") {
+            java.srcDir("src/generic/java")
+        }
+
         // Adds exported schema location as test app assets.
         getByName("androidTest") {
             assets.srcDirs(files("$projectDir/schemas"))
