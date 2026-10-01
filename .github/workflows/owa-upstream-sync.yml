@@ -1,0 +1,147 @@
+# SPDX-FileCopyrightText: 2026 OWA Lab contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: OWA Cloud - Upstream Nextcloud Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly on Monday. GitHub schedules are evaluated in UTC.
+    - cron: "37 5 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: owa-cloud-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OWA branding branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: owa-branding
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch official Nextcloud Android upstream
+        run: |
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/nextcloud/android.git
+          git fetch --no-tags upstream master
+
+      - name: Check whether an update is available
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA="$(git rev-parse upstream/master)"
+          SHORT_SHA="$(git rev-parse --short=12 upstream/master)"
+          echo "sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch=automation/nextcloud-upstream-$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "update_needed=false" >> "$GITHUB_OUTPUT"
+            echo "OWA Cloud already contains the current Nextcloud master."
+          else
+            echo "update_needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge upstream into temporary update branch
+        if: steps.upstream.outputs.update_needed == 'true'
+        shell: bash
+        env:
+          UPDATE_BRANCH: ${{ steps.upstream.outputs.branch }}
+          SHORT_SHA: ${{ steps.upstream.outputs.short_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git switch -c "$UPDATE_BRANCH"
+
+          set +e
+          git merge --no-ff --no-edit upstream/master
+          MERGE_EXIT=$?
+          set -e
+
+          if [ "$MERGE_EXIT" -ne 0 ]; then
+            CONFLICTS="$(git diff --name-only --diff-filter=U || true)"
+            git merge --abort || true
+
+            {
+              echo "Automatic Nextcloud upstream merge into `owa-branding` failed."
+              echo
+              echo "Upstream commit: `$SHORT_SHA`"
+              echo
+              echo "Conflicting files:"
+              printf '%s\n' "$CONFLICTS" | sed 's/^/- `/' | sed 's/$/`/'
+              echo
+              echo "No OWA branch was changed."
+            } > /tmp/issue-body.md
+
+            if ! gh issue list --state open --search "$SHORT_SHA in:title" --json title --jq '.[].title' | grep -Fq "$SHORT_SHA"; then
+              gh issue create --title "Nextcloud upstream sync conflict: $SHORT_SHA" --body-file /tmp/issue-body.md
+            fi
+            exit 1
+          fi
+
+      - name: Verify OWA branding survived the merge
+        if: steps.upstream.outputs.update_needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'register("owa")' app/build.gradle.kts
+          grep -Fq 'applicationId = "labs.owa.cloud"' app/build.gradle.kts
+          grep -Fq '<string name="app_name">OWA Cloud</string>' app/src/owa/res/values/setup.xml
+          grep -Fq 'https://github.com/scncvk19/owa-cloud' app/src/owa/res/values/setup.xml
+          test -f app/src/owa/res/drawable/ic_launcher_foreground.xml
+          test -f app/src/owa/res/drawable/logo.xml
+          test -f .github/workflows/owa-cloud-build.yml
+          test -f .github/workflows/owa-cloud-release.yml
+
+      - name: Push update branch
+        if: steps.upstream.outputs.update_needed == 'true'
+        shell: bash
+        env:
+          UPDATE_BRANCH: ${{ steps.upstream.outputs.branch }}
+        run: |
+          git fetch origin "$UPDATE_BRANCH" || true
+          git push --force-with-lease origin "HEAD:$UPDATE_BRANCH"
+
+      - name: Open pull request for manual review
+        if: steps.upstream.outputs.update_needed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_BRANCH: ${{ steps.upstream.outputs.branch }}
+          SHORT_SHA: ${{ steps.upstream.outputs.short_sha }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+        run: |
+          EXISTING_PR="$(gh pr list --state open --base owa-branding --head "$UPDATE_BRANCH" --json url --jq '.[0].url // empty')"
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Pull request already exists: $EXISTING_PR"
+            exit 0
+          fi
+
+          cat > /tmp/pr-body.md <<EOF
+          ## Automated Nextcloud upstream update
+
+          - Upstream repository: `nextcloud/android`
+          - Upstream commit: `$UPSTREAM_SHA`
+          - Target branch: `owa-branding`
+          - OWA branding guard: passed
+          - Merge policy: **manual review only**
+
+          The automation never merges this PR by itself. Review the Android build and branding checks before merging.
+          EOF
+
+          gh pr create             --base owa-branding             --head "$UPDATE_BRANCH"             --title "Sync Nextcloud upstream ($SHORT_SHA)"             --body-file /tmp/pr-body.md
