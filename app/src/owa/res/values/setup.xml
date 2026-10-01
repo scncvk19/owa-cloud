@@ -22,6 +22,7 @@
 
     <bool name="is_branded_client">true</bool>
     <bool name="is_branded_plus_client">false</bool>
+    <bool name="show_provider_or_own_installation">false</bool>
 
     <color name="primary">#4F6D5A</color>
     <color name="primary_dark">#2C3B31</color>
