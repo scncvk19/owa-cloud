@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ SPDX-FileCopyrightText: 2026 OWA Lab contributors
+  ~ SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<resources>
+    <string name="app_name">OWA Cloud</string>
+    <string name="account_type">labs.owa.cloud</string>
+    <string name="authority">labs.owa.cloud</string>
+    <string name="users_and_groups_search_authority">labs.owa.cloud.providers.UsersAndGroupsSearchProvider</string>
+    <string name="users_and_groups_share_with">labs.owa.cloud.providers.UsersAndGroupsSearchProvider.action.SHARE_WITH</string>
+    <string name="document_provider_authority">labs.owa.cloud.documents</string>
+    <string name="file_provider_authority">labs.owa.cloud.files</string>
+    <string name="image_cache_provider_authority">labs.owa.cloud.imageCache.provider</string>
+    <string name="db_file">owa-cloud.db</string>
+    <string name="db_name">owa-cloud</string>
+    <string name="data_folder">OWA Cloud</string>
+    <string name="default_display_name_for_root_folder">OWA Cloud</string>
+    <string name="nextcloud_user_agent">Mozilla/5.0 (Android) OWA-Cloud-android/%1$s%2$s</string>
+    <string name="office_user_agent">Mozilla/5.0 (Android %1$s) Mobile OWA-Cloud-android/%2$s</string>
+    <string name="name_for_branded_user_agent">OWA-Cloud</string>
+
+    <bool name="is_branded_client">true</bool>
+    <bool name="is_branded_plus_client">false</bool>
+
+    <color name="primary">#4F6D5A</color>
+    <color name="primary_dark">#2C3B31</color>
+    <color name="color_accent">#C7A76C</color>
+    <color name="login_text_color">#FFFFFF</color>
+    <color name="login_text_hint_color">#DDE5DF</color>
+
+    <string name="sourcecode_url" translatable="false">https://github.com/scncvk19/owa-cloud</string>
+    <string name="url_app_download" translatable="false">https://github.com/scncvk19/owa-cloud/releases/latest</string>
+    <string name="report_issue_link" translatable="false">https://github.com/scncvk19/owa-cloud/issues/new</string>
+    <string name="report_issue_empty_link" translatable="false">https://github.com/scncvk19/owa-cloud/issues/new</string>
+
+    <string name="login_data_own_scheme" translatable="false">owacloud</string>
+    <string name="suggested_server" translatable="false"></string>
+    <string name="enforce_servers" translatable="false"></string>
+
+    <string name="splashScreenBold">OWA</string>
+    <string name="splashScreenNormal"> Cloud</string>
+</resources>
