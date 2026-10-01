@@ -1,0 +1,119 @@
+# SPDX-FileCopyrightText: 2026 OWA Lab contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Publish OWA Cloud Android Pre-Release
+
+on:
+  push:
+    branches:
+      - owa-branding
+    paths-ignore:
+      - "server-aio/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: owa-cloud-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OWA branding branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: owa-branding
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Verify OWA branding
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'applicationId = "labs.owa.cloud"' app/build.gradle.kts
+          grep -Fq '<string name="app_name">OWA Cloud</string>' app/src/owa/res/values/setup.xml
+          test -f app/src/owa/res/drawable/ic_launcher_foreground.xml
+
+      - name: Build APK
+        run: |
+          {
+            echo "org.gradle.jvmargs=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8 -XX:+UseParallelGC -XX:MaxMetaspaceSize=768m"
+            echo "kotlin.daemon.jvmargs=-Xmx3g -XX:+UseParallelGC -XX:MaxMetaspaceSize=512m"
+            echo "org.gradle.workers.max=2"
+          } >> gradle.properties
+          ./gradlew assembleOwaDebug
+
+      - name: Prepare release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/owa/debug -type f -name '*.apk' | head -n1)"
+          test -n "$APK"
+          mkdir -p artifacts
+          cp "$APK" artifacts/OWA-Cloud.apk
+          sha256sum artifacts/OWA-Cloud.apk > artifacts/OWA-Cloud.apk.sha256
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OWA-Cloud-APK
+          path: |
+            artifacts/OWA-Cloud.apk
+            artifacts/OWA-Cloud.apk.sha256
+          if-no-files-found: error
+
+      - name: Determine next OWA alpha version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          CURRENT_SHA="$(git rev-parse HEAD)"
+          echo "sha=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
+
+          EXISTING_TAG="$(git tag --points-at "$CURRENT_SHA" --list 'owa-v*-alpha' | sort -V | tail -n1)"
+          if [ -n "$EXISTING_TAG" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$EXISTING_TAG" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LATEST_TAG="$(git tag --list 'owa-v[0-9]*.[0-9]*.[0-9]*-alpha' | sort -V | tail -n1)"
+          if [ -z "$LATEST_TAG" ]; then
+            NEXT_TAG="owa-v0.1.0-alpha"
+          else
+            VERSION="${LATEST_TAG#owa-v}"
+            VERSION="${VERSION%-alpha}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            NEXT_TAG="owa-v${MAJOR}.${MINOR}.$((PATCH + 1))-alpha"
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub pre-release
+        if: steps.version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          gh release create "$RELEASE_TAG"             "artifacts/OWA-Cloud.apk#OWA-Cloud.apk"             "artifacts/OWA-Cloud.apk.sha256#OWA-Cloud.apk.sha256"             --repo "$GITHUB_REPOSITORY"             --target "${{ steps.version.outputs.sha }}"             --title "OWA Cloud $RELEASE_TAG"             --prerelease             --notes "Automated OWA Cloud Android pre-release built from the owa-branding branch.
+
+          Based on the open-source Nextcloud Android client.
+          Source: https://github.com/scncvk19/owa-cloud
+
+          This testing APK uses the Android debug signing key. It is intended for direct testing and self-hosted use, not as a production Play Store release."
