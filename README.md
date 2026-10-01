@@ -2,6 +2,26 @@
  ~ SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
  ~ SPDX-License-Identifier: AGPL-3.0-or-later OR GPL-2.0-only
 -->
+
+<!-- OWA Cloud branding notice: this repository remains under the upstream open-source licenses. -->
+
+# OWA Cloud
+
+OWA Cloud is the OWA Lab branded Android client based on the open-source Nextcloud Android project.
+
+- Branded Android flavor: `owa`
+- Application ID: `labs.owa.cloud`
+- Branded branch: `owa-branding`
+- Automated APK pre-releases through GitHub Actions
+- Automated upstream checks with **manual review before merge**
+- Self-hosted server setup under `server-aio/`, based on official Nextcloud All-in-One
+
+See [OWA_BRANDING.md](OWA_BRANDING.md) for the update model and [server-aio/README.md](server-aio/README.md) for the server setup.
+
+> Nextcloud is an upstream open-source project. OWA Cloud is a modified distribution and is not an official Nextcloud GmbH client.
+
+---
+
 # [Nextcloud](https://nextcloud.com) Android app :iphone:
 
 [![REUSE status](https://api.reuse.software/badge/github.com/nextcloud/android)](https://api.reuse.software/info/github.com/nextcloud/android) [![Build Status](https://drone.nextcloud.com/api/badges/nextcloud/android/status.svg)](https://drone.nextcloud.com/nextcloud/android) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/fb4cf26336774ee3a5c9adfe829c41aa)](https://app.codacy.com/gh/nextcloud/android/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Releases](https://img.shields.io/github/release/nextcloud/android.svg)](https://github.com/nextcloud/android/releases/latest)
