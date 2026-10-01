@@ -159,6 +159,12 @@ android {
                 dimension = "default"
             }
 
+            register("owa") {
+                applicationId = "labs.owa.cloud"
+                dimension = "default"
+                versionNameSuffix = "-owa"
+            }
+
             register("gplay") {
                 applicationId = "com.nextcloud.client"
                 dimension = "default"
